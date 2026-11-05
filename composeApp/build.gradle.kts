@@ -47,7 +47,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
 
     @get:Input
     abstract val supabaseUrl: Property<String>
-
     @get:Input
     abstract val supabaseAnonKey: Property<String>
 
@@ -55,8 +54,11 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val supabaseFallbackUrl: Property<String>
 
     @get:Input
+    abstract val drameLicenseApiUrl: Property<String>
+    @get:Input
+    abstract val drameLicenseAnonKey: Property<String>
+    @get:Input
     abstract val sentryDsn: Property<String>
-
     @get:Input
     abstract val sentryDesktopDsn: Property<String>
 
@@ -71,7 +73,21 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
         val props = Properties()
         localPropertiesFile.asFile.orNull?.takeIf { it.exists() }?.inputStream()?.use { props.load(it) }
 
-        val outDir = outputDir.get().asFile
+              val outDir = outputDir.get().asFile
+
+        outDir.resolve("com/nuvio/app/core/license").apply {
+            mkdirs()
+            resolve("DrameLicenseConfig.kt").writeText(
+                """
+                |package com.nuvio.app.core.license
+                |
+                |object DrameLicenseConfig {
+                |    const val API_URL = "${drameLicenseApiUrl.get()}"
+                |    const val ANON_KEY = "${drameLicenseAnonKey.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
         outDir.resolve("com/nuvio/app/core/network").apply {
             mkdirs()
             resolve("SupabaseConfig.kt").writeText(
@@ -558,16 +574,23 @@ fun runtimeConfigBoolean(key: String, default: Boolean): Boolean =
 val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generateRuntimeConfigs") {
     outputDir.set(generatedRuntimeConfigDir)
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
+
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
     desktopAppVersionName.set(desktopReleaseVersionName)
     desktopAppVersionCode.set(desktopReleaseVersionCode)
+
     supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL"))
     supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY"))
     supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))
+
+    drameLicenseApiUrl.set(runtimeConfigValue("DRAME_LICENSE_API_URL"))
+    drameLicenseAnonKey.set(runtimeConfigValue("DRAME_LICENSE_ANON_KEY"))
+
     sentryDsn.set(runtimeConfigValue("SENTRY_DSN"))
     sentryDesktopDsn.set(runtimeConfigValue("SENTRY_DESKTOP_DSN"))
     tmdbApiKey.set(runtimeConfigValue("TMDB_API_KEY"))
+
     sentryEnvironment.set(
         when {
             requestedGradleTasks.any { "benchmark" in it } -> "benchmark"
@@ -576,6 +599,8 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
         }
     )
 }
+
+    
 
 val isMacHost = System.getProperty("os.name").contains("mac", ignoreCase = true)
 val isWindowsHost = System.getProperty("os.name").contains("win", ignoreCase = true)
@@ -1228,6 +1253,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.savedstate)
             implementation(libs.androidx.savedstate.compose)
+            implementation("io.ktor:ktor-client-core:${libs.versions.ktor.get()}")
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.atomicfu)

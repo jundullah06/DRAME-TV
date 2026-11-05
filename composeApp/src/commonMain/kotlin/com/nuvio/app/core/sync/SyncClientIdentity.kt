@@ -1,3 +1,4 @@
+
 package com.nuvio.app.core.sync
 
 import kotlinx.serialization.json.JsonObjectBuilder
@@ -18,6 +19,7 @@ object SyncClientIdentity {
         val stored = SyncClientIdentityStorage.loadClientId()
             ?.trim()
             ?.takeIf { it.isValidSyncClientId() }
+
         if (stored != null) {
             cachedClientId = stored
             return stored
@@ -37,7 +39,9 @@ object SyncClientIdentity {
         }
 
     private fun String.isValidSyncClientId(): Boolean =
-        length in 16..96 && all { it.isLetterOrDigit() || it == '-' || it == '_' }
+        length in 16..96 && all {
+            it.isLetterOrDigit() || it == '-' || it == '_'
+        }
 }
 
 internal fun JsonObjectBuilder.putSyncOriginClientId() {
@@ -47,4 +51,8 @@ internal fun JsonObjectBuilder.putSyncOriginClientId() {
 internal expect object SyncClientIdentityStorage {
     fun loadClientId(): String?
     fun saveClientId(clientId: String)
+
+    fun loadLicenseKey(): String?
+    fun saveLicenseKey(licenseKey: String)
+    fun clearLicenseKey()
 }
